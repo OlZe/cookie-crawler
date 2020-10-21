@@ -21,10 +21,8 @@ async function startCrawl(startUrl) {
             await visitUrl(driver, nextUrlData.url, nextUrlData.crawlDepth);
         }
 
-        console.log('done');
-        console.log('queue: ', urlQueue);
-        console.log('visited URLs:', visitedUrls);
         console.log('Amount of visited URLs: ', visitedUrls.size);
+        console.log('done');
 
     } catch (e) {
         console.log('EXCEPTION:\n', e);
@@ -36,6 +34,8 @@ async function startCrawl(startUrl) {
 
 
 async function visitUrl(driver, url, currentCrawlDepth) {
+    console.log('Visiting: ', url);
+
     // Go to url
     await driver.get(url);
 

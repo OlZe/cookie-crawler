@@ -39,15 +39,36 @@ async function visitUrl(driver, url, currentCrawlDepth) {
     // Go to url
     await driver.get(url);
 
-    // Get crawlable links
-    if(currentCrawlDepth < maxCrawlDepth) {
-        let hrefElements = await driver.findElements(By.css("a[href]"));
-        let hrefUrls = await Promise.all(hrefElements.map(e => e.getAttribute('href')));
-        let crawlableUrls = hrefUrls.filter(url => url.startsWith(domain));
 
-        // enqueue crawlable links
-        crawlableUrls.forEach(url => enqueueUrl(url, currentCrawlDepth + 1));
+    // TODO: Scraping logic
+
+
+    // Extract and enqueue URLs
+    if(currentCrawlDepth < maxCrawlDepth) {
+        let urls = await extractUrls(driver);
+        urls.forEach(url => enqueueUrl(url, currentCrawlDepth + 1));
     }
+}
+
+async function extractUrls(driver) {
+    // Extract all url strings
+    let hrefElements = await driver.findElements(By.css("a[href]"));
+    let hrefUrls = await Promise.all(hrefElements.map(e => e.getAttribute('href')));
+
+    // Remove links pointing to other domains and pdfs
+    let filteredUrls = hrefUrls.filter(url => url.startsWith(domain))
+
+    // Remove anchors (everything after '#')
+    .map(url => {
+        let i = url.indexOf('#');
+        return i > 0 ? url.substring(0, i) : url;
+    })
+
+    // Remove '.pdf' URLs
+    .filter(url => !url.endsWith('.pdf'));
+
+    // Remove duplicates
+    return [...new Set(filteredUrls)];
 }
 
 function enqueueUrl(url, crawlDepth) {

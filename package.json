@@ -1,0 +1,11 @@
+{
+  "name": "headless-browser-webcrawler",
+  "version": "1.0.0",
+  "description": "An automated webcrawler/scraper that uses selenium, running a headless browser, to fully render webpages. This allows the visited websites to use browser features like execution of JavaScript and access of localstorage and thus gives the webcrawler the complete DOM to scrape data from.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
+}

@@ -1,7 +1,9 @@
 const {Builder, By, Key, until} = require('selenium-webdriver');
+const ChromeDriver = require('selenium-webdriver/chrome');
+
 const visitedUrls = new Set(); // contains all URLs that have been visited, or have been enqueued for a future visit
 const urlQueue = [];
-const maxCrawlDepth = 2;
+const maxCrawlDepth = 5;
 let domain = '';
 
 startCrawl('https://www.also.com/ec/cms5/en_6000/6000/');
@@ -14,7 +16,11 @@ async function startCrawl(startUrl) {
     console.log('Domain of start url: ', domain);
     enqueueUrl(startUrl, 0);
 
-    let driver = await new Builder().forBrowser('chrome').build();
+    let driver = await new Builder().forBrowser('chrome')
+        .setChromeOptions(new ChromeDriver.Options().headless().addArguments('--log-level=3'))
+        .build();
+
+
     try {
         while(urlQueue.length > 0) {
             let nextUrlData = urlQueue.shift();
@@ -55,7 +61,7 @@ async function extractUrls(driver) {
     let hrefElements = await driver.findElements(By.css("a[href]"));
     let hrefUrls = await Promise.all(hrefElements.map(e => e.getAttribute('href')));
 
-    // Remove links pointing to other domains and pdfs
+    // Remove links pointing to other domains
     let filteredUrls = hrefUrls.filter(url => url.startsWith(domain))
 
     // Remove anchors (everything after '#')

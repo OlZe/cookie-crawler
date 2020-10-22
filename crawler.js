@@ -1,9 +1,10 @@
 const {Builder, By, Key, until} = require('selenium-webdriver');
 const ChromeDriver = require('selenium-webdriver/chrome');
 
-const visitedUrls = new Set(); // contains all URLs that have been visited, or have been enqueued for a future visit
+const markedUrls = new Set(); // contains all URLs that have been visited, or have been enqueued for a future visit
 const urlQueue = [];
-const maxCrawlDepth = 5;
+const maxCrawlDepth = 3;
+const foundCookies = {};
 let domain = '';
 
 startCrawl('https://www.also.com/ec/cms5/en_6000/6000/');
@@ -19,7 +20,7 @@ async function startCrawl(startUrl) {
     let driver = await new Builder().forBrowser('chrome')
         .setChromeOptions(new ChromeDriver.Options().headless().addArguments('--log-level=3'))
         .build();
-
+    driver.manage().deleteAllCookies();
 
     try {
         while(urlQueue.length > 0) {
@@ -27,7 +28,8 @@ async function startCrawl(startUrl) {
             await visitUrl(driver, nextUrlData.url, nextUrlData.crawlDepth);
         }
 
-        console.log('Amount of visited URLs: ', visitedUrls.size);
+        console.log('Amount of visited URLs: ', markedUrls.size);
+        console.log('Found cookies:', foundCookies);
         console.log('done');
 
     } catch (e) {
@@ -47,6 +49,17 @@ async function visitUrl(driver, url, currentCrawlDepth) {
 
 
     // TODO: Scraping logic
+    let cookies = await driver.manage().getCookies();
+    for(let cookie of cookies) {
+        if(!(cookie.name in foundCookies)) {
+            foundCookies[cookie.name] = {
+                sourceUrl: url,
+                domain: cookie.domain,
+                expiry: cookie.expiry,
+                value: cookie.value };
+        }
+    }
+    console.log('Number of cookies: ', Object.keys(foundCookies).length);
 
 
     // Extract and enqueue URLs
@@ -78,16 +91,16 @@ async function extractUrls(driver) {
 }
 
 function enqueueUrl(url, crawlDepth) {
-    if(!visitedUrls.has(url)) {
+    if(!markedUrls.has(url)) {
         urlQueue.push({ url, crawlDepth });
-        visitedUrls.add(url);
+        markedUrls.add(url);
     }
 }
 
 function getDomainOf(url) {
     // Get everything from 'http://' or 'https://' until the next '/'
     let domain = '';
-    for(prefix of ['http://', 'https://']) {
+    for(let prefix of ['http://', 'https://']) {
         if(url.startsWith(prefix)) {
             domain += prefix;
             url = url.replace(prefix, '');

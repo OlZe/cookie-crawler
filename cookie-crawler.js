@@ -6,12 +6,18 @@ class CookieCrawler {
 
     constructor(startUrl, maxCrawlDepth) {
         this._startUrl = startUrl;
-        this._maxCrawlDepth = maxCrawlDepth;
+        this._maxCrawlDepth = maxCrawlDepth || 0;
         this._domain = this._getDomainOf(startUrl);
         this._urlQueue = new UrlQueueManager(this._domain, maxCrawlDepth);
         this._foundCookies = {};
+        this._onUrlVisit = [];
+        this._afterUrlVisit = [];
     }
 
+    /**
+     * Start the crawl, using the startUrl and maxCrawlDepth set in constructor
+     * @returns a dictioniary of cookies when done
+     */
     async startCrawl() {
         this._urlQueue.enqueue(this._startUrl, 0);
 
@@ -26,20 +32,31 @@ class CookieCrawler {
                 let nextUrlData = this._urlQueue.next();
                 await this._visitUrl(driver, nextUrlData.url, nextUrlData.crawlDepth);
             }
-
-            console.log('Amount of visited URLs: ', this._urlQueue.getMarkedUrls().length);
-            console.log('Found cookies:', this._foundCookies);
-            console.log('done');
-
-        } catch (e) {
-            console.log('EXCEPTION:\n', e);
+            return this._foundCookies;
         } finally {
             await driver.quit();
         }
     }
 
+    /**
+     * Calls callbackFn before the URL is being visited/scraped
+     * @param {(url, crawlDepth) => void} callbackFn
+     */
+    onUrlVisit(callbackFn) {
+        this._onUrlVisit.push(callbackFn);
+    }
+
+    /**
+     * Calls callbackFn after the url has been scraped, with a dictionary of cookies that have been found so far
+     * @param {(url, crawldepth, cookies) => void} callbackFn 
+     */
+    afterUrlVisit(callbackFn) {
+        this._afterUrlVisit.push(callbackFn);
+    }
+
     async _visitUrl(driver, url, currentCrawlDepth) {
-        console.log('Visiting: ', url);
+        // Notify onUrlVisit subscribers
+        this._onUrlVisit.forEach(fn => fn(url, currentCrawlDepth));
 
         // Go to url
         await driver.get(url);
@@ -55,14 +72,15 @@ class CookieCrawler {
                     value: cookie.value };
             }
         }
-        console.log('Number of cookies: ', Object.keys(this._foundCookies).length);
-
 
         // Extract and enqueue URLs
         if(currentCrawlDepth < this._maxCrawlDepth) {
             let urls = await this._extractUrls(driver);
             urls.forEach(url => this._urlQueue.enqueue(url, currentCrawlDepth + 1));
         }
+
+        // Notify afterUrlVisit Subscribers
+        this._afterUrlVisit.forEach(fn => fn(url, currentCrawlDepth, this._foundCookies));
     }
 
     async _extractUrls(driver) {

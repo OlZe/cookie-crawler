@@ -68,7 +68,7 @@ class CookieCrawler {
                 this._foundCookies[cookie.name] = {
                     sourceUrl: url,
                     domain: cookie.domain,
-                    expiry: cookie.expiry,
+                    expiry: cookie.expiry || 'session',
                     value: cookie.value };
             }
         }

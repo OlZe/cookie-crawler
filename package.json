@@ -1,14 +1,23 @@
 {
-  "name": "headless-browser-webcrawler",
+  "name": "@olze/cookie-crawler",
   "version": "1.0.0",
-  "description": "An automated webcrawler/scraper that uses selenium, running a headless browser, to fully render webpages. This allows the visited websites to use browser features like execution of JavaScript and access of localstorage and thus gives the webcrawler the complete DOM to scrape data from.",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "author": "",
-  "license": "ISC",
+  "description": "A webcrawler/webscraper which collects data on cookies. Using selenium, a headless browser is used to fully render webpages (including execution of Javascript). Because this scraper basically acts like a User navigating a regular browser, all cookies that a regular User could accumluate will be detected.",
+  "main": "cookie-crawler.js",
   "dependencies": {
     "selenium-webdriver": "^4.0.0-alpha.7"
-  }
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "node test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OlZe/cookie-crawler.git"
+  },
+  "author": "OlZe <oliverzeidler97@gmail.com>",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/OlZe/cookie-crawler/issues"
+  },
+  "homepage": "https://github.com/OlZe/cookie-crawler#readme"
 }

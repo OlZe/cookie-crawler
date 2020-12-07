@@ -10,11 +10,14 @@ async function test() {
     console.log(`Starting for: ${startUrl}`);
     console.log(`with a maximum crawl depth of: ${maxCrawlDepth}`);
 
-    myCrawler.onUrlVisit((url, crawlDepth) => 
-        console.log('Visiting:', crawlDepth, url));
+    myCrawler.onUrlVisit(async (url, crawlDepth) => {
+        console.log('Visiting:', crawlDepth, url);
+    });
 
-    myCrawler.afterUrlVisit((url, crawlDepth, cookies) => 
-        console.log('Number of cookies found so far:', cookies.length));
+    myCrawler.afterUrlVisit(async (url, crawlDepth, cookies, driver) => {
+        console.log('Number of cookies found so far:', cookies.length);
+        return new Promise(r => setTimeout(r, 2000)); // delay
+    });
 
     let cookies = await myCrawler.startCrawl();
     console.log('done.');

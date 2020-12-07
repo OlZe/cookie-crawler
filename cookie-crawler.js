@@ -1,4 +1,5 @@
-const {Builder, By, Key, until} = require('selenium-webdriver');
+const Selenium = require('selenium-webdriver');
+const By = Selenium.By;
 const ChromeDriver = require('selenium-webdriver/chrome');
 const UrlQueueManager = require('./url-queue-manager');
 
@@ -31,19 +32,28 @@ class CookieCrawler {
 
     /**
      * Start the crawl, using the startUrl and maxCrawlDepth set in constructor
+     * @param {boolean} [headless=true] Run the browser in headless mode without visible GUI
      * @returns {Promise<Cookie[]>} an array of all cookies that have been found while crawling
      */
-    async startCrawl() {
+    async startCrawl(headless = true) {
         this._urlQueue.enqueue(this._startUrl, 0);
 
+        let driver;
+        if (headless) {
+            driver = await new Selenium.Builder().forBrowser('chrome')
+                .setChromeOptions(new ChromeDriver.Options().headless().addArguments('--log-level=3'))
+                .build();
+        }
+        else {
+            driver = await new Selenium.Builder().forBrowser('chrome')
+                .setChromeOptions(new ChromeDriver.Options().addArguments('--log-level=3'))
+                .build();
+        }
 
-        let driver = await new Builder().forBrowser('chrome')
-            .setChromeOptions(new ChromeDriver.Options().headless().addArguments('--log-level=3'))
-            .build();
         driver.manage().deleteAllCookies();
 
         try {
-            while(this._urlQueue.hasNext()) {
+            while (this._urlQueue.hasNext()) {
                 let nextUrlData = this._urlQueue.next();
                 await this._visitUrl(driver, nextUrlData.url, nextUrlData.crawlDepth);
             }
@@ -55,15 +65,15 @@ class CookieCrawler {
 
     /**
      * Calls callbackFn before the URL is being visited/scraped
-     * @param {(url: string, crawlDepth: number) => void} callbackFn
+     * @param {(url: string, crawlDepth: number) => Promise} callbackFn
      */
     onUrlVisit(callbackFn) {
         this._onUrlVisit.push(callbackFn);
     }
 
     /**
-     * Calls callbackFn after the url has been scraped, with a dictionary of cookies that have been found so far
-     * @param {(url: string, crawlDepth: number, cookies: Cookie[]) => void} callbackFn 
+     * Calls callbackFn after the url has been rendered and scraped, passing with a browser instance allowing for custom javascript execution.
+     * @param {(url: string, crawlDepth: number, cookies: Cookie[], browser: Selenium.WebDriver) => Promise} callbackFn 
      */
     afterUrlVisit(callbackFn) {
         this._afterUrlVisit.push(callbackFn);
@@ -71,33 +81,37 @@ class CookieCrawler {
 
     async _visitUrl(driver, url, currentCrawlDepth) {
         // Notify onUrlVisit subscribers
-        this._onUrlVisit.forEach(fn => fn(url, currentCrawlDepth));
+        for(const fn of this._onUrlVisit) {
+            await fn(url, currentCrawlDepth);
+        }
 
         // Go to url
         await driver.get(url);
 
         // Gather cookie data
         let cookies = await driver.manage().getCookies();
-        for(let cookie of cookies) {
-            if(!(cookie.name in this._foundCookiesDict)) {
+        for (let cookie of cookies) {
+            if (!(cookie.name in this._foundCookiesDict)) {
                 this._foundCookiesDict[cookie.name] = {
                     name: cookie.name,
                     value: cookie.value,
                     sourceUrl: url,
                     domain: cookie.domain,
-                    expiry: cookie.expiry || 'session' };
+                    expiry: cookie.expiry || 'session'
+                };
             }
         }
 
         // Extract and enqueue URLs
-        if(currentCrawlDepth < this._maxCrawlDepth) {
+        if (currentCrawlDepth < this._maxCrawlDepth) {
             let urls = await this._extractUrls(driver);
             urls.forEach(url => this._urlQueue.enqueue(url, currentCrawlDepth + 1));
         }
 
         // Notify afterUrlVisit Subscribers
-        this._afterUrlVisit.forEach(fn => 
-            fn(url, currentCrawlDepth, this._dictToValues(this._foundCookiesDict)));
+        for(const fn of this._afterUrlVisit) {
+            await fn(url, currentCrawlDepth, this._dictToValues(this._foundCookiesDict), driver);
+        }
     }
 
     async _extractUrls(driver) {
@@ -109,8 +123,8 @@ class CookieCrawler {
     _getDomainOf(url) {
         // Get everything from 'http://' or 'https://' until the next '/'
         let domain = '';
-        for(let prefix of ['http://', 'https://']) {
-            if(url.startsWith(prefix)) {
+        for (let prefix of ['http://', 'https://']) {
+            if (url.startsWith(prefix)) {
                 domain += prefix;
                 url = url.replace(prefix, '');
                 break;

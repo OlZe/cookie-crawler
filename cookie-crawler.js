@@ -26,8 +26,8 @@ class CookieCrawler {
         this._domain = this._getDomainOf(startUrl);
         this._urlQueue = new UrlQueueManager(this._domain, maxCrawlDepth);
         this._foundCookiesDict = {};
-        this._onUrlVisit = [];
-        this._afterUrlVisit = [];
+        this._beforeUrlVisit = [];
+        this._afterUrlRendered = [];
     }
 
     /**
@@ -64,24 +64,24 @@ class CookieCrawler {
     }
 
     /**
-     * Calls callbackFn before the URL is being visited/scraped
+     * Calls callbackFn before the URL is being navigated to
      * @param {(url: string, crawlDepth: number) => Promise} callbackFn
      */
-    onUrlVisit(callbackFn) {
-        this._onUrlVisit.push(callbackFn);
+    beforeUrlVisit(callbackFn) {
+        this._beforeUrlVisit.push(callbackFn);
     }
 
     /**
-     * Calls callbackFn after the url has been rendered and scraped, passing with a browser instance allowing for custom javascript execution.
+     * Calls callbackFn after the url has been rendered and scraped, passing a browser instance allowing for custom javascript execution.
      * @param {(url: string, crawlDepth: number, cookies: Cookie[], browser: Selenium.WebDriver) => Promise} callbackFn 
      */
-    afterUrlVisit(callbackFn) {
-        this._afterUrlVisit.push(callbackFn);
+    afterUrlRendered(callbackFn) {
+        this._afterUrlRendered.push(callbackFn);
     }
 
     async _visitUrl(driver, url, currentCrawlDepth) {
-        // Notify onUrlVisit subscribers
-        for(const fn of this._onUrlVisit) {
+        // Notify beforeUrlVisit subscribers
+        for(const fn of this._beforeUrlVisit) {
             await fn(url, currentCrawlDepth);
         }
 
@@ -108,8 +108,8 @@ class CookieCrawler {
             urls.forEach(url => this._urlQueue.enqueue(url, currentCrawlDepth + 1));
         }
 
-        // Notify afterUrlVisit Subscribers
-        for(const fn of this._afterUrlVisit) {
+        // Notify afterUrlRendered Subscribers
+        for(const fn of this._afterUrlRendered) {
             await fn(url, currentCrawlDepth, this._dictToValues(this._foundCookiesDict), driver);
         }
     }

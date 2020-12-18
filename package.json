@@ -1,12 +1,15 @@
 {
   "name": "@olze/cookie-crawler",
-  "version": "1.1.0",
+  "version": "2.0.0",
   "description": "A webcrawler/webscraper which collects data on cookies. Using selenium, a headless browser is used to fully render webpages (including execution of Javascript). Because this scraper basically acts like a User navigating a regular browser, all cookies that a regular User could accumluate will be detected.",
   "main": "cookie-crawler.js",
-  "dependencies": {
+  "dependencies": {},
+  "devDependencies": {
     "selenium-webdriver": "^4.0.0-alpha.7"
   },
-  "devDependencies": {},
+  "peerDependencies": {
+    "selenium-webdriver": "^4.0.0-alpha.7"
+  },
   "scripts": {
     "test": "node test.js"
   },

@@ -14,6 +14,23 @@ const UrlQueueManager = require('./url-queue-manager');
  */
 
 
+/**
+ * @callback BeforeUrlVisitCallback
+ * @param {string} url
+ * @param {number} crawlDepth
+ * @returns {Promise}
+ */
+
+/**
+ * @callback AfterUrlRenderedCallback
+ * @param {string} url
+ * @param {number} crawlDepth
+ * @param {Cookie[]} cookies
+ * @param {Selenium.WebDriver} browser
+ * @returns {Promise}
+ */
+
+
 class CookieCrawler {
 
     /**
@@ -21,13 +38,26 @@ class CookieCrawler {
      * @param {number} maxCrawlDepth 
      */
     constructor(startUrl, maxCrawlDepth) {
+        /** @type {string} @private */
         this._startUrl = startUrl;
+
+        /** @type {number} @private  */
         this._maxCrawlDepth = maxCrawlDepth || 0;
+
+        /** @type {string} @private  */
         this._domain = this._getDomainOf(startUrl);
+
+        /** @type {UrlQueueManager} @private  */
         this._urlQueue = new UrlQueueManager(this._domain, maxCrawlDepth);
+
+        /** @type {Object<string, Cookie>} @private  */
         this._foundCookiesDict = {};
-        this._beforeUrlVisit = [];
-        this._afterUrlRendered = [];
+
+        /**@type {BeforeUrlVisitCallback[]} @private  */
+        this._beforeUrlVisitCallbacks = [];
+
+        /**@type {AfterUrlRenderedCallback[]} @private  */
+        this._afterUrlRenderedCallbacks = [];
     }
 
     /**
@@ -64,24 +94,32 @@ class CookieCrawler {
     }
 
     /**
-     * Calls callbackFn before the URL is being navigated to
-     * @param {(url: string, crawlDepth: number) => Promise} callbackFn
+     * Calls callbackFn and resolves Promise before the URL is being navigated to
+     * @param {BeforeUrlVisitCallback} callbackFn
      */
     beforeUrlVisit(callbackFn) {
-        this._beforeUrlVisit.push(callbackFn);
+        this._beforeUrlVisitCallbacks.push(callbackFn);
+    }
+
+
+     /**
+      * Calls callbackFn and resolves Promise after URL is fully rendered and scraped.
+      * Allows execution of Javascript in the browser through the callbackFn's provided arguments.
+      * @param {AfterUrlRenderedCallback} callbackFn 
+      */
+    afterUrlRendered(callbackFn) {
+        this._afterUrlRenderedCallbacks.push(callbackFn);
     }
 
     /**
-     * Calls callbackFn after the url has been rendered and scraped, passing a browser instance allowing for custom javascript execution.
-     * @param {(url: string, crawlDepth: number, cookies: Cookie[], browser: Selenium.WebDriver) => Promise} callbackFn 
+     * @param {Selenium.WebDriver} driver 
+     * @param {string} url 
+     * @param {number} currentCrawlDepth 
+     * @private
      */
-    afterUrlRendered(callbackFn) {
-        this._afterUrlRendered.push(callbackFn);
-    }
-
     async _visitUrl(driver, url, currentCrawlDepth) {
         // Notify beforeUrlVisit subscribers
-        for(const fn of this._beforeUrlVisit) {
+        for (const fn of this._beforeUrlVisitCallbacks) {
             await fn(url, currentCrawlDepth);
         }
 
@@ -109,19 +147,28 @@ class CookieCrawler {
         }
 
         // Notify afterUrlRendered Subscribers
-        for(const fn of this._afterUrlRendered) {
+        for (const fn of this._afterUrlRenderedCallbacks) {
             await fn(url, currentCrawlDepth, this._dictToValues(this._foundCookiesDict), driver);
         }
     }
 
+    /**
+     * @param {Selenium.WebDriver} driver
+     * @returns {Promise<string[]>} All url strings
+     * @private
+     */
     async _extractUrls(driver) {
-        // Extract all url strings
         let hrefElements = await driver.findElements(By.css("a[href]"));
         return Promise.all(hrefElements.map(e => e.getAttribute('href')));
     }
 
+    /**
+     * Get everything from 'http://' or 'https://' until the next '/'
+     * @param {string} url
+     * @returns {string} domain
+     * @private
+     */
     _getDomainOf(url) {
-        // Get everything from 'http://' or 'https://' until the next '/'
         let domain = '';
         for (let prefix of ['http://', 'https://']) {
             if (url.startsWith(prefix)) {
@@ -134,6 +181,13 @@ class CookieCrawler {
         return domain;
     }
 
+    /**
+     * Turns an object into an array of its values. (Keys discarded)
+     * @param {Object<string, T>} dictionary
+     * @returns {T[]} the values
+     * @template T
+     * @private
+     */
     _dictToValues(dictionary) {
         return Object.keys(dictionary).map(key => dictionary[key]);
     }

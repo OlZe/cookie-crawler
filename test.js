@@ -14,10 +14,11 @@ async function test() {
         console.log('Visiting:', crawlDepth, url);
     });
 
-    myCrawler.afterUrlRendered(async (url, crawlDepth, cookies, driver) => {
+    myCrawler.afterUrlRendered(async (url, crawlDepth, cookies, browser) => {
         console.log('Number of cookies found so far:', cookies.length);
         return new Promise(r => setTimeout(r, 2000)); // delay
     });
+
 
     let cookies = await myCrawler.startCrawl();
     console.log('done.');

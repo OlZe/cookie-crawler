@@ -42,7 +42,7 @@ class UrlQueueManager {
     }
 
     /**
-     * @returns {string}
+     * @returns {{url:string, crawlDepth: number}}
      */
     next() {
         // Inefficient: This operation is O(n) instead of O(1)

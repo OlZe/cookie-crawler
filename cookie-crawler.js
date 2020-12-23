@@ -87,7 +87,7 @@ class CookieCrawler {
                 let nextUrlData = this._urlQueue.next();
                 await this._visitUrl(driver, nextUrlData.url, nextUrlData.crawlDepth);
             }
-            return this._dictToValues(this._foundCookiesDict);
+            return this._foundCookies();
         } finally {
             await driver.quit();
         }
@@ -148,7 +148,7 @@ class CookieCrawler {
 
         // Notify afterUrlRendered Subscribers
         for (const fn of this._afterUrlRenderedCallbacks) {
-            await fn(url, currentCrawlDepth, this._dictToValues(this._foundCookiesDict), driver);
+            await fn(url, currentCrawlDepth, this._foundCookies(), driver);
         }
     }
 
@@ -182,14 +182,11 @@ class CookieCrawler {
     }
 
     /**
-     * Turns an object into an array of its values. (Keys discarded)
-     * @param {Object<string, T>} dictionary
-     * @returns {T[]} the values
-     * @template T
+     * @returns {Cookie[]}
      * @private
      */
-    _dictToValues(dictionary) {
-        return Object.keys(dictionary).map(key => dictionary[key]);
+    _foundCookies() {
+        return Object.keys(this._foundCookiesDict).map(key => this._foundCookiesDict[key]);
     }
 }
 

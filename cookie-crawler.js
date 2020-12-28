@@ -67,25 +67,12 @@ class CookieCrawler {
      */
     async startCrawl(headless = true) {
         this._urlQueue.enqueue(this._startUrl, 0);
-
-        let driver;
-        if (headless) {
-            driver = await new Selenium.Builder().forBrowser('chrome')
-                .setChromeOptions(new ChromeDriver.Options().headless().addArguments('--log-level=3'))
-                .build();
-        }
-        else {
-            driver = await new Selenium.Builder().forBrowser('chrome')
-                .setChromeOptions(new ChromeDriver.Options().addArguments('--log-level=3'))
-                .build();
-        }
-
-        driver.manage().deleteAllCookies();
+        let driver = await this._initWebBrowser(headless);
 
         try {
             while (this._urlQueue.hasNext()) {
-                let nextUrlData = this._urlQueue.next();
-                await this._visitUrl(driver, nextUrlData.url, nextUrlData.crawlDepth);
+                let nextUrl = this._urlQueue.next();
+                await this._visitUrl(driver, nextUrl.url, nextUrl.crawlDepth);
             }
             return this._foundCookies();
         } finally {
@@ -187,6 +174,21 @@ class CookieCrawler {
      */
     _foundCookies() {
         return Object.keys(this._foundCookiesDict).map(key => this._foundCookiesDict[key]);
+    }
+
+    /**
+     * @param {boolean} [headless=true] Run the browser in headless mode without visible GUI
+     * @returns {Promise<Selenium.WebDriver>} 
+     * @private
+     */
+    async _initWebBrowser(headless = true) {
+        let options = new ChromeDriver.Options().addArguments('--log-level=3');
+        if(headless) {
+            options = options.headless();
+        }
+        let driver = await new Selenium.Builder().forBrowser('chrome').setChromeOptions(options).build();
+        driver.manage().deleteAllCookies();
+        return driver;
     }
 }
 
